@@ -1,51 +1,60 @@
 // TransformerVerse.cdc
 
-// The TransformerVerse contract dictates the laws of operations for the Autobots
-// and their fuel, Energon. 
+// The TransformerVerse contract dictates the laws of operations for the Autobots and their fuel, Energon. 
+// As an Autobot continues to get traded among accounts, their powers and rankings will increase.
 access(all) contract TransformerVerse {
     // Declare the Autobot resource type
     access(all) resource Autobot {
         // The unique ID that differentiates each Autobot
         access(all) let id: UInt64
+        // physicalPower dictates the physical combat ability of an Autobot
+        access(all) var physicalPower: UInt64
+        // energyPower dictates the energy combat ability of an Autobot
+        access(all) var energyPower: UInt64
+        // speed dictates the ability of an Autobot to initiate an attack
+        access(all) var speed: UInt64
+        // evolve dictates the ability for an Autobot to rank up and increase in combat and transform capabilities
+        access(all) var evolve: UInt64
+        // transform is the ability of an Autobot to assume the form of an entity
+        access(all) var transform: UInt64
+        // rank is an Autobot's "level" or class tier. The higher the rank, the higher the Autobot's combat prowess. 
+        access(all) var rank: Int
 
-        // String mapping to hold metadata
+        // metadata to store additional data
         access(all) var metadata: {String: String}
 
-        // Initialize both fields in the init function
-        init(initID: UInt64) {
-            self.id = initID
+        init(id: UInt64, evolve: UInt64, transform: UInt64, physical: UInt64, energy: UInt64, speed: UInt64) {
+            self.id = id
+            self.evolve = evolve
+            self.transform = transform
+            self.physicalPower = physical
+            self.energyPower = energy
+            self.speed = speed
             self.metadata = {}
+            self.rank = 1
         }
     }
 
-    // We define this interface purely as a way to allow users
-    // to create public, restricted references to their Autobot Collection.
-    // They would use this to only expose the deposit, getIDs,
-    // and idExists fields in their Collection
+    // AutobotReceiver is the public interface for external actors to interact with the receiver's Garage
     access(all) resource interface AutobotReceiver {
-
         access(all) fun deposit(token: @Autobot)
-
         access(all) fun getIDs(): [UInt64]
-
         access(all) fun idExists(id: UInt64): Bool
     }
 
-    // The definition of the Collection resource that
+    // The definition of the Garage resource that
     // holds the Autobots that a user owns
-    access(all) resource Collection: AutobotReceiver {
+    access(all) resource Garage: AutobotReceiver {
         // dictionary of Autobot conforming tokens
         // Autobot is a resource type with an `UInt64` ID field
         access(all) var ownedAutobots: @{UInt64: Autobot}
 
-        // Initialize the Autobots field to an empty collection
+        // Initialize the Autobots field to an empty Garage
         init () {
             self.ownedAutobots <- {}
         }
 
-        // withdraw 
-        //
-        // Function that removes an Autobot from the collection 
+        // withdraw removes an Autobot from the Garage 
         // and moves it to the calling context
         access(all) fun withdraw(withdrawID: UInt64): @Autobot {
             // If the Autobot isn't found, the transaction panics and reverts
@@ -54,22 +63,20 @@ access(all) contract TransformerVerse {
             return <-token
         }
 
-        // deposit 
-        //
-        // Function that takes a Autobot as an argument and 
-        // adds it to the collections dictionary
+        // deposit takes a Autobot as an argument and 
+        // adds it to the Garages dictionary
         access(all) fun deposit(token: @Autobot) {
             // add the new token to the dictionary which removes the old one
             let oldToken <- self.ownedAutobots[token.id] <- token
             destroy oldToken
         }
 
-        // idExists checks to see if a Autobot with the given ID exists in the collection
+        // idExists checks to see if a Autobot with the given ID exists in the Garage
         access(all) fun idExists(id: UInt64): Bool {
             return self.ownedAutobots[id] != nil
         }
 
-        // getIDs returns an array of the IDs that are in the collection
+        // getIDs returns an array of the IDs that are in the Garage
         access(all) fun getIDs(): [UInt64] {
             return self.ownedAutobots.keys
         }
@@ -79,35 +86,33 @@ access(all) contract TransformerVerse {
         }
     }
 
-    // creates a new empty Collection resource and returns it 
-    access(all) fun createEmptyCollection(): @Collection {
-        return <- create Collection()
+    // creates a new empty Garage resource and returns it 
+    access(all) fun createNewGarage(): @Garage {
+        return <- create Garage()
     }
 
-    // AutobotMinter
+    // AllSpark
     //
-    // Resource that would be owned by an admin or by a smart contract 
-    // that allows them to mint new Autobots when needed
-    access(all) resource AutobotMinter {
+    // A resource to be owned by the root contract.
+    // The AllSpark creates new Autobots.
+    access(all) resource AllSpark {
 
-        // the ID that is used to mint Autobots
-        // it is onlt incremented so that Autobot ids remain
-        // unique. It also keeps track of the total number of Autobots
-        // in existence
+        // The primary key for all Autobots. 
+        // It also keeps track of the total number of Autobots in existence.
         access(all) var idCount: UInt64
 
         init() {
             self.idCount = 1
         }
 
-        // mintAutobot 
+        // create 
         //
-        // Function that mints a new Autobot with a new ID
-        // and deposits it in the recipients collection using their collection reference
-        access(all) fun mintAutobot(recipient: &AutobotReceiver) {
+        // create creates a new Autobot with a new ID and attributes
+        // and deposits it in the recipient's Garage.
+        access(all) fun create(recipient: &AutobotReceiver) {
 
             // create a new Autobot
-            var newAutobot <- create Autobot(initID: self.idCount)
+            var newAutobot <- create Autobot(id: self.idCount, evolve: 100, transform: 100, physical: 100, energy: 100, speed: 100)
             
             // deposit it in the recipient's account using their reference
             recipient.deposit(token: <-newAutobot)
@@ -138,15 +143,15 @@ access(all) contract TransformerVerse {
     }
 
 	init() {
-		// store an empty Autobot Collection in account storage
-        let oldCollection <- self.account.storage[Collection] <- create Collection()
-        destroy oldCollection
+		// store an empty Autobot Garage in account storage
+        let oldGarage <- self.account.storage[Garage] <- create Garage()
+        destroy oldGarage
 
-        // publish a reference to the Collection in storage
-        self.account.published[&AutobotReceiver] = &self.account.storage[Collection] as &AutobotReceiver
+        // publish a reference to the Garage in storage
+        self.account.published[&AutobotReceiver] = &self.account.storage[Garage] as &AutobotReceiver
 
         // store a minter resource in account storage
-        let oldMinter <- self.account.storage[AutobotMinter] <- create AutobotMinter()
+        let oldMinter <- self.account.storage[AllSpark] <- create AllSpark()
         destroy oldMinter
 	}
 }
