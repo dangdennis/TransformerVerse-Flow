@@ -3,8 +3,13 @@
 // The TransformerVerse contract dictates the laws of operations for the Autobots and their fuel, Energon. 
 // As an Autobot continues to get traded among accounts, their powers and rankings will increase.
 access(all) contract TransformerVerse {
+    // Tradables is the base layer for any tradable resource
+    access(all) resource interface Tradables {
+        access(all) var timesTraded: UInt64
+    }
+
     // Declare the Autobot resource type
-    access(all) resource Autobot {
+    access(all) resource Autobot: Tradables {
         // The unique ID that differentiates each Autobot
         access(all) let id: UInt64
         // physicalPower dictates the physical combat ability of an Autobot
@@ -19,6 +24,8 @@ access(all) contract TransformerVerse {
         access(all) var transform: UInt64
         // rank is an Autobot's "level" or class tier. The higher the rank, the higher the Autobot's combat prowess. 
         access(all) var rank: Int
+        // timesTraded counts the number of times this resource has been 
+        access(all) var timesTraded: UInt64
 
         // metadata to store additional data
         access(all) var metadata: {String: String}
@@ -32,6 +39,7 @@ access(all) contract TransformerVerse {
             self.speed = speed
             self.metadata = {}
             self.rank = 1
+            self.timesTraded = 0
         }
     }
 
@@ -91,9 +99,7 @@ access(all) contract TransformerVerse {
         return <- create Garage()
     }
 
-    // AllSpark
-    //
-    // A resource to be owned by the root contract.
+    // AllSpark is to be owned by the root contract.
     // The AllSpark creates new Autobots.
     access(all) resource AllSpark {
 
@@ -105,8 +111,6 @@ access(all) contract TransformerVerse {
             self.idCount = 1
         }
 
-        // create 
-        //
         // create creates a new Autobot with a new ID and attributes
         // and deposits it in the recipient's Garage.
         access(all) fun create(recipient: &AutobotReceiver) {
