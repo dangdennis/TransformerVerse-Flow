@@ -80,7 +80,6 @@ access(all) contract Energon {
     // are defined in, so there is no way for a malicious user to create Vaults
     // out of thin air. A special Minter resource needs to be defined to mint
     // new tokens.
-    // 
     access(all) resource Vault: Receiver {
         
 		// keeps track of the total balance of the account's tokens
@@ -91,24 +90,19 @@ access(all) contract Energon {
             self.balance = balance
         }
 
-        // withdraw
-        //
-        // Function that takes an integer amount as an argument
+        // withdraw takes an integer amount as an argument
         // and withdraws that amount from the Vault.
         //
         // It creates a new temporary Vault that is used to hold
         // the money that is being transferred. It returns the newly
         // created Vault to the context that called so it can be deposited
         // elsewhere.
-        //
         access(all) fun withdraw(amount: UInt64): @Vault {
             self.balance = self.balance - amount
             return <-create Vault(balance: amount)
         }
         
-        // deposit
-        //
-        // Function that takes a Vault object as an argument and adds
+        // deposit takes a Vault object as an argument and adds
         // its balance to the balance of the owners Vault.
         //
         // It is allowed to destroy the sent Vault because the Vault
@@ -120,38 +114,31 @@ access(all) contract Energon {
         }
     }
 
-    // createEmptyVault
-    //
-    // Function that creates a new Vault with a balance of zero
+    // createEmptyVault creates a new Vault with a balance of zero
     // and returns it to the calling context. A user must call this function
     // and store the returned Vault in their storage in order to allow their
     // account to be able to receive deposits of this token type.
-    //
     access(all) fun createEmptyVault(): @Vault {
         return <-create Vault(balance: 0)
     }
 
-	// VaultMinter
-    //
-    // Resource object that an admin can control to mint new tokens
+	// VaultMinter can mint new Energon tokens
     access(all) resource VaultMinter {
 
 		// Function that mints new tokens and deposits into an account's vault
 		// using their `Receiver` reference.
-        access(all) fun mintTokens(amount: UInt64, recipient: &Receiver) {
+        access(all) fun mintEnergon(amount: UInt64, recipient: &Receiver) {
 			Energon.totalSupply = Energon.totalSupply + UInt64(amount)
             recipient.deposit(from: <-create Vault(balance: amount))
         }
     }
 
-    // The init function for the contract. All fields in the contract must
-    // be initialized at deployment. This is just an example of what
-    // an implementation could do in the init function. The numbers are arbitrary.
+    // init sets the initial total supply, creates the vault and vault minters
     init() {
-        self.totalSupply = 30
+        self.totalSupply = 9999999999999
 
         // Create the Vault with the initial balance and put it into storage.
-        let oldVault <- self.account.storage[Vault] <- create Vault(balance: 30)
+        let oldVault <- self.account.storage[Vault] <- create Vault(balance: self.totalSupply)
         destroy oldVault
 
         // Create a VaultMinter resource object and put it into storage.

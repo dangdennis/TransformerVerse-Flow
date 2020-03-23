@@ -18,8 +18,8 @@ access(all) contract TransformerVerse {
         access(all) var energyPower: UInt64
         // speed dictates the ability of an Autobot to initiate an attack
         access(all) var speed: UInt64
-        // evolve dictates the ability for an Autobot to rank up and increase in combat and transform capabilities
-        access(all) var evolve: UInt64
+        // growth dictates the ability for an Autobot to rank up and increase in combat and transform capabilities
+        access(all) var growth: UInt64
         // transform is the ability of an Autobot to assume the form of an entity
         access(all) var transform: UInt64
         // rank is an Autobot's "level" or class tier. The higher the rank, the higher the Autobot's combat prowess. 
@@ -30,9 +30,9 @@ access(all) contract TransformerVerse {
         // additional metadata fields
         access(all) let rankToTitle: {Int: String}
 
-        init(id: UInt64, evolve: UInt64, transform: UInt64, physical: UInt64, energy: UInt64, speed: UInt64) {
+        init(id: UInt64, growth: UInt64, transform: UInt64, physical: UInt64, energy: UInt64, speed: UInt64) {
             self.id = id
-            self.evolve = evolve
+            self.growth = growth
             self.transform = transform
             self.physicalPower = physical
             self.energyPower = energy
@@ -114,7 +114,7 @@ access(all) contract TransformerVerse {
     }
 
     // creates a new empty AutobotGarage resource and returns it 
-    access(all) fun createNewAutobotGarage(): @AutobotGarage {
+    access(all) fun createEmptyAutobotGarage(): @AutobotGarage {
         return <- create AutobotGarage()
     }
 
@@ -154,11 +154,11 @@ access(all) contract TransformerVerse {
         // create creates a new Autobot with a new ID and attributes
         // and deposits it in the recipient's AutobotGarage.
          access(all) fun create(recipient: &AutobotReceiver) {
-            // TODO decrease supply depending on evolve level
+            // TODO decrease supply depending on growth level
             let evolveRank = self.rollEvolvability()
 
             // create a new Autobot
-            var newAutobot <- create Autobot(id: self.idCounter, evolve: UInt64(evolveRank), transform: UInt64(self.rollDice()), physical: UInt64(self.rollDice()), energy: UInt64(self.rollDice()), speed: UInt64(self.rollDice()))
+            var newAutobot <- create Autobot(id: self.idCounter, growth: UInt64(evolveRank), transform: UInt64(self.rollDice()), physical: UInt64(self.rollDice()), energy: UInt64(self.rollDice()), speed: UInt64(self.rollDice()))
             
             // deposit it in the recipient's account using their reference
             recipient.deposit(token: <-newAutobot)
@@ -227,9 +227,9 @@ access(all) contract TransformerVerse {
         // publish a reference to the AutobotGarage in storage
         self.account.published[&AutobotReceiver] = &self.account.storage[AutobotGarage] as &AutobotReceiver
 
-        // store a minter resource in account storage
-        let oldMinter <- self.account.storage[AllSpark] <- create AllSpark()
-        destroy oldMinter
+        // store the Autobot minter resource in account storage
+        let oldAllSpark <- self.account.storage[AllSpark] <- create AllSpark()
+        destroy oldAllSpark
 	}
 
     /* 
