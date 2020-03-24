@@ -9,7 +9,7 @@ access(all) contract TransformerVerse {
     }
 
     // rankToTitle maps ranking to title 
-    access(self) let rankToTitle: {Int: String}
+    access(all) let rankToTitle: {Int: String}
 
     // Declare the Autobot resource type
     access(all) resource Autobot: Tradables {
@@ -103,19 +103,22 @@ access(all) contract TransformerVerse {
         return <- create AutobotGarage()
     }
 
-    // AllSpark is to be owned by the root contract.
     // The AllSpark creates new Autobots.
-    // TODO: Encapsulate RNG related code into a working struct or resource
     access(all) resource AllSpark {
-        // idCounter is the primary key for all Autobots. 
+        // id is the primary key for all Autobots. 
         // It also keeps track of the total number of Autobots in existence.
-        access(all) var idCounter: UInt64
+        access(all) var id: UInt64
         access(all) let autobotSupply: {Int: Int}
+        access(all) let rng: TransformerVerse.RNG
+        access(all) var autobotRankGeneratorCounter: Int
 
         init() {
-            self.idCounter = 1
+            self.id = 1
+            self.rng = TransformerVerse.RNG()
+            // autobotRankGeneratorCounter maintains random state specifically for rank/growth
+            // Start off at Prime rank (10) for the genesis token!
+            self.autobotRankGeneratorCounter = 10 
 
-            self.autobotRankGeneratorCounter = 10 // Start off at Prime rank for the genesis token!
             self.autobotSupply = {
                 1: 100000,
                 2: 10000,
@@ -128,73 +131,34 @@ access(all) contract TransformerVerse {
                 9: 15,
                 10: 5
             }
-            
-            // RNG stuff lol
-            self.diceOne = [63, 23, 50, 68, 29, 71, 27, 25, 72, 85, 90, 55, 89, 82, 33, 57, 53, 57, 97, 69, 83, 5, 81, 89, 37, 18, 63, 26, 13, 64, 84, 5, 29, 23, 10, 67, 94, 61, 91, 79, 78, 61, 92, 98, 26, 91, 86, 49, 56, 34, 65, 80, 25, 21, 90, 36, 30, 52, 32, 16, 55, 77, 30, 62, 65, 71, 58, 27, 73, 60, 2, 63, 34, 73, 27, 42, 85, 94, 50, 90, 20, 87, 42, 43, 77, 4, 95, 66, 63, 93, 53, 25, 91, 1, 53, 74, 2, 100, 92, 5]
-            self.diceTwo = [39, 2, 67, 61, 95, 21, 77, 25, 59, 24, 94, 92, 8, 69, 50, 81, 85, 65, 82, 8, 35, 6, 8, 4, 42, 88, 67, 16, 53, 10, 19, 9, 84, 30, 83, 84, 31, 94, 57, 5, 59, 16, 17, 53, 6, 100, 15, 16, 62, 95, 70, 35, 63, 72, 21, 62, 97, 79, 42, 64, 66, 81, 75, 15, 87, 10, 16, 67, 81, 61, 80, 62, 75, 95, 65, 65, 39, 30, 87, 19, 89, 8, 75, 30, 27, 77, 95, 41, 67, 46, 68, 4, 24, 93, 1, 77, 76, 95, 80, 58]
-            self.counterOne = 0
-            self.counterTwo = 0
         }
 
         // create creates a new Autobot with a new ID and attributes
         // and deposits it in the recipient's AutobotGarage.
          access(all) fun create(recipient: &AutobotReceiver) {
             // TODO decrease supply depending on growth level
-            let evolveRank = self.rollEvolvability()
+            let growth = self.rollGrowth()
 
             // create a new Autobot
-            var newAutobot <- create Autobot(id: self.idCounter, growth: UInt64(evolveRank), transform: UInt64(self.rollDice()), physical: UInt64(self.rollDice()), energy: UInt64(self.rollDice()), speed: UInt64(self.rollDice()))
+            var newAutobot <- create Autobot(id: self.id, growth: UInt64(growth), transform: UInt64(self.rng.roll()), physical: UInt64(self.rng.roll()), energy: UInt64(self.rng.roll()), speed: UInt64(self.rng.roll()))
             
             // deposit it in the recipient's account using their reference
             recipient.deposit(token: <-newAutobot)
 
             // change the id so that each ID is unique
-            self.idCounter = self.idCounter + UInt64(1)
+            self.id = self.id + UInt64(1)
         }
 
-        /* 
-        * Below this line are additional helper resources and structs for the AllSpark
-        * Basically hacks to handle stateful number generation
-        * Ideally I have unlimited contract files or working structs/resources where I'd store these helpers instead.
-        */
-        access(self) var autobotRankGeneratorCounter: Int
-        access(self) var diceOne: [Int]
-        access(self) var diceTwo: [Int]
-        access(self) var counterOne: Int
-        access(self) var counterTwo: Int
 
-        // rollDice will return a "random" number
-        access(all) fun rollDice(): Int {
-            let fate = self.diceOne[self.counterOne] + self.diceTwo[self.counterTwo]
-            self.calculateNewCounters()
-            return fate
+        // rollGrowth will return a "random" number
+        access(all) fun rollGrowth(): Int {
+            let growth = self.autobotRankGeneratorCounter
+            self.updateGrowthCounter()
+            return growth
         }
 
-        // calculateNewCounters manually "randomizes" the dice's index counters
-        access(self) fun calculateNewCounters() {
-            // If I was smart enough, I'd probably have a better solution given the current language constraints
-            // Maybe try some bitwise operation
-            if self.counterOne == self.diceOne.length {
-                self.counterOne = 0
-            } else {
-                self.counterOne = self.counterOne + 1
-            }
-
-            if self.counterTwo == self.diceTwo.length {
-                self.counterTwo = 0
-            } else {
-                self.counterTwo = self.counterTwo + 1
-            }
-        }
-
-        // rollEvolvability will return a "random" number
-        access(all) fun rollEvolvability(): Int {
-            let evolvability = self.autobotRankGeneratorCounter
-            self.calculateNewEvolveCounter()
-            return evolvability
-        }
-
-        access(all) fun calculateNewEvolveCounter() {
+        // updateGrowthCounter updates the index that selects our "random" number
+        access(all) fun updateGrowthCounter() {
             if self.autobotRankGeneratorCounter == self.autobotSupply.keys.length {
                 // reset the counter
                 self.autobotRankGeneratorCounter = 1
@@ -236,44 +200,43 @@ access(all) contract TransformerVerse {
     */
 
     // RNG is necessary atm to act as a temporary form of random number generator
-    // Question: Why can't I make this RNG access(self)
-    /*
-    access(all) resource RNG {
-        access(all) var diceOne: [Int; 6]
-        access(all) var diceTwo: [Int; 6]
-        access(self) var counterOne: Int
-        access(self) var counterTwo: Int
+    access(all) struct RNG {
+        access(all) var diceOne: [Int; 100]
+        access(all) var diceTwo: [Int; 100]
+        access(all) var counterOne: Int
+        access(all) var counterTwo: Int
 
         init() {
-            self.diceOne = [1,2,3,4,5,6]
-            self.diceTwo = [1,2,3,4,5,6]
-
+            // My amazingly smart RNG machine
+            self.diceOne = [63, 23, 50, 68, 29, 71, 27, 25, 72, 85, 90, 55, 89, 82, 33, 57, 53, 57, 97, 69, 83, 5, 81, 89, 37, 18, 63, 26, 13, 64, 84, 5, 29, 23, 10, 67, 94, 61, 91, 79, 78, 61, 92, 98, 26, 91, 86, 49, 56, 34, 65, 80, 25, 21, 90, 36, 30, 52, 32, 16, 55, 77, 30, 62, 65, 71, 58, 27, 73, 60, 2, 63, 34, 73, 27, 42, 85, 94, 50, 90, 20, 87, 42, 43, 77, 4, 95, 66, 63, 93, 53, 25, 91, 1, 53, 74, 2, 100, 92, 5]
+            self.diceTwo = [39, 2, 67, 61, 95, 21, 77, 25, 59, 24, 94, 92, 8, 69, 50, 81, 85, 65, 82, 8, 35, 6, 8, 4, 42, 88, 67, 16, 53, 10, 19, 9, 84, 30, 83, 84, 31, 94, 57, 5, 59, 16, 17, 53, 6, 100, 15, 16, 62, 95, 70, 35, 63, 72, 21, 62, 97, 79, 42, 64, 66, 81, 75, 15, 87, 10, 16, 67, 81, 61, 80, 62, 75, 95, 65, 65, 39, 30, 87, 19, 89, 8, 75, 30, 27, 77, 95, 41, 67, 46, 68, 4, 24, 93, 1, 77, 76, 95, 80, 58]
             self.counterOne = 0
-            self.counterTwo = 5
+            self.counterTwo = 0
         }
 
-        access(all) fun rollDice(): Int {
+        // roll will return a "random" number
+        access(all) fun roll(): Int {
             let fate = self.diceOne[self.counterOne] + self.diceTwo[self.counterTwo]
-            self.calculateNewCounters()
+            self.updateCounters()
             return fate
         }
 
-        // calculateNewCounters manually "randomizes" the dice's index counters
-        access(self) fun calculateNewCounters() {
+        // updateCounters manually "randomizes" the dice's index counters
+        access(all) fun updateCounters() {
             // If I was smart enough, I'd probably have a better solution given the current language constraints
-            if self.counterOne == 5 {
+            // Maybe try some bitwise operation
+            if self.counterOne == self.diceOne.length {
                 self.counterOne = 0
             } else {
                 self.counterOne = self.counterOne + 1
             }
 
-            if self.counterTwo == 5 {
+            if self.counterTwo == self.diceTwo.length {
                 self.counterTwo = 0
             } else {
                 self.counterTwo = self.counterTwo + 1
             }
         }
     }
-    */
 }
 
