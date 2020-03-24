@@ -9,7 +9,7 @@ access(all) contract TransformerVerse {
     }
 
     // rankToTitle maps ranking to title 
-    access(all) let rankToTitle: {Int: String}
+    pub let rankToTitle: {Int: String}
 
     // Declare the Autobot resource type
     access(all) resource Autobot: Tradables {
@@ -107,14 +107,12 @@ access(all) contract TransformerVerse {
     access(all) resource AllSpark {
         // id is the primary key for all Autobots. 
         // It also keeps track of the total number of Autobots in existence.
-        access(all) var id: UInt64
-        access(all) let autobotSupply: {Int: Int}
-        access(all) let rng: TransformerVerse.RNG
-        access(all) var autobotRankGeneratorCounter: Int
+        access(self) var id: UInt64
+        access(self) let autobotSupply: {Int: Int}
+        access(self) var autobotRankGeneratorCounter: Int
 
         init() {
             self.id = 1
-            self.rng = TransformerVerse.RNG()
             // autobotRankGeneratorCounter maintains random state specifically for rank/growth
             // Start off at Prime rank (10) for the genesis token!
             self.autobotRankGeneratorCounter = 10 
@@ -140,7 +138,7 @@ access(all) contract TransformerVerse {
             let growth = self.rollGrowth()
 
             // create a new Autobot
-            var newAutobot <- create Autobot(id: self.id, growth: UInt64(growth), transform: UInt64(self.rng.roll()), physical: UInt64(self.rng.roll()), energy: UInt64(self.rng.roll()), speed: UInt64(self.rng.roll()))
+            var newAutobot <- create Autobot(id: self.id, growth: UInt64(growth), transform: UInt64(TransformerVerse.rng.roll()), physical: UInt64(TransformerVerse.rng.roll()), energy: UInt64(TransformerVerse.rng.roll()), speed: UInt64(TransformerVerse.rng.roll()))
             
             // deposit it in the recipient's account using their reference
             recipient.deposit(token: <-newAutobot)
@@ -151,14 +149,18 @@ access(all) contract TransformerVerse {
 
 
         // rollGrowth will return a "random" number
-        access(all) fun rollGrowth(): Int {
+        access(self) fun rollGrowth(): Int {
             let growth = self.autobotRankGeneratorCounter
             self.updateGrowthCounter()
             return growth
         }
 
+        access(self) fun updateAutobotSupply(rank: Int) {
+            
+        }
+
         // updateGrowthCounter updates the index that selects our "random" number
-        access(all) fun updateGrowthCounter() {
+        access(self) fun updateGrowthCounter() {
             if self.autobotRankGeneratorCounter == self.autobotSupply.keys.length {
                 // reset the counter
                 self.autobotRankGeneratorCounter = 1
@@ -167,6 +169,8 @@ access(all) contract TransformerVerse {
             }
         }
     }
+
+    access(all) let rng: RNG
 
 	init() {
 		// store an empty Autobot AutobotGarage in account storage
@@ -192,6 +196,8 @@ access(all) contract TransformerVerse {
             9: "Optimus",
             10: "Prime"
         }
+
+        self.rng = RNG()
 	}
 
     /* 
@@ -223,8 +229,7 @@ access(all) contract TransformerVerse {
 
         // updateCounters manually "randomizes" the dice's index counters
         access(all) fun updateCounters() {
-            // If I was smart enough, I'd probably have a better solution given the current language constraints
-            // Maybe try some bitwise operation
+            // If I was smart enough, I'd probably have a better solution given the current language constraints. Maybe try some bitwise operation.
             if self.counterOne == self.diceOne.length {
                 self.counterOne = 0
             } else {
