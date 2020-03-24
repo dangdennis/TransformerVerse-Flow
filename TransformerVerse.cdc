@@ -8,6 +8,9 @@ access(all) contract TransformerVerse {
         access(all) var timesTraded: UInt64
     }
 
+    // rankToTitle maps ranking to title 
+    access(self) let rankToTitle: {Int: String}
+
     // Declare the Autobot resource type
     access(all) resource Autobot: Tradables {
         // The unique ID that differentiates each Autobot
@@ -27,9 +30,6 @@ access(all) contract TransformerVerse {
         // timesTraded counts the number of times this resource has been 
         access(all) var timesTraded: UInt64
 
-        // additional metadata fields
-        access(all) let rankToTitle: {Int: String}
-
         init(id: UInt64, growth: UInt64, transform: UInt64, physical: UInt64, energy: UInt64, speed: UInt64) {
             self.id = id
             self.growth = growth
@@ -39,26 +39,11 @@ access(all) contract TransformerVerse {
             self.speed = speed
             self.rank = 1
             self.timesTraded = 0
-
-            // TODO: There has to be a better place to set the rankToTitle mapping.
-            // Move this into a getter somewhere else. Ideally an Autobot can reference it as some struct from TransformerVerse
-            self.rankToTitle = {
-                1: "Rank 1",
-                2: "Rank 2",
-                3: "Rank 3",
-                4: "Rank 4",
-                5: "Rank 5",
-                6: "Maximus",
-                7: "Magnus",
-                8: "Rodimus",
-                9: "Optimus",
-                10: "Prime"
-            }
         }
 
         // wonder how I can turn this into a struct getter. Is that possible for resources?
         access(all) fun title(): String? {
-            return self.rankToTitle[self.rank]
+            return TransformerVerse.rankToTitle[self.rank]
         }
     }
 
@@ -230,6 +215,19 @@ access(all) contract TransformerVerse {
         // store the Autobot minter resource in account storage
         let oldAllSpark <- self.account.storage[AllSpark] <- create AllSpark()
         destroy oldAllSpark
+
+        self.rankToTitle = {
+            1: "Rank 1",
+            2: "Rank 2",
+            3: "Rank 3",
+            4: "Rank 4",
+            5: "Rank 5",
+            6: "Maximus",
+            7: "Magnus",
+            8: "Rodimus",
+            9: "Optimus",
+            10: "Prime"
+        }
 	}
 
     /* 
