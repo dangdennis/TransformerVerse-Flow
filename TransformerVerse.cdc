@@ -148,13 +148,22 @@ access(all) contract TransformerVerse {
             let growth = self.rollGrowth()
 
             // create a new Transformer
-            var newTransformer <- create Transformer(id: self.id, faction: TransformerVerse.Autobots, growth: UInt64(growth), transform: UInt64(TransformerVerse.rng.roll()), physical: UInt64(TransformerVerse.rng.roll()), energy: UInt64(TransformerVerse.rng.roll()), speed: UInt64(TransformerVerse.rng.roll()))
+            var newTransformer <- create Transformer(id: self.id, faction: self.whichFaction(TransformerVerse.rng.roll()), growth: UInt64(growth), transform: UInt64(TransformerVerse.rng.roll()), physical: UInt64(TransformerVerse.rng.roll()), energy: UInt64(TransformerVerse.rng.roll()), speed: UInt64(TransformerVerse.rng.roll()))
             
             // deposit it in the recipient's account using their reference
             recipient.deposit(token: <-newTransformer)
 
             // change the id so that each ID is unique
             self.id = self.id + UInt64(1)
+        }
+
+        // whichFaction will return a Transformer faction dependent on roll
+        access(self) fun whichFaction(_ roll: Int): String {
+            if roll > 50 {
+                return TransformerVerse.Decepticons
+            } else {
+                return TransformerVerse.Autobots
+            }
         }
 
 
