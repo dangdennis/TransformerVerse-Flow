@@ -23,7 +23,7 @@ access(all) contract TransformerVerse {
         // Transformer name
         access(all) var name: String
         // isNamed is a flag to allow renaming a Transformer once
-        access(self) var isNamed: Bool
+        access(all) var isNamed: Bool
         // faction: Autobots vs Decepticons
         access(all) let faction: String
         // physicalPower dictates the physical combat ability of an Transformer
@@ -42,6 +42,8 @@ access(all) contract TransformerVerse {
         access(all) var timesTraded: UInt64
         // isTransformed dictates whether the Transformer is in a TransformedEntity state or in humanoid form
         access(all) var isTransformed: Bool
+        // scannedEntity is the entity that a Transformer has scanned
+        access(all) var scannedEntity: @TransformerVerse.TransformableEntity?
 
         init(id: UInt64, faction: String, growth: UInt64, transform: UInt64, physical: UInt64, energy: UInt64, speed: UInt64) {
             self.id = id
@@ -56,6 +58,11 @@ access(all) contract TransformerVerse {
             self.name = "Unnamed Transformer"
             self.isNamed = false
             self.isTransformed = false
+            self.scannedEntity <- create TransformerVerse.RawTransformerEntity()
+        }
+
+        destroy() {
+            destroy self.scannedEntity
         }
 
         // a Transformer can be renamed once
@@ -74,7 +81,7 @@ access(all) contract TransformerVerse {
             }
         }
 
-         // rankUp will level up the attributes of a Transformer
+        // rankUp will level up the attributes of a Transformer
         // a Transformer's growth rate determines the increase rate
         access(all) fun rankUp() {
             // a Transformer's max rank is tied to its growth value
@@ -300,6 +307,22 @@ access(all) contract TransformerVerse {
 
         self.rng = RNG()
 	}
+
+     // TransformableEntity is the base requirement of entities Transformers to replicate and assume form
+    access(all) resource interface TransformableEntity {
+        access(all) let transformRequirement: UInt64
+        access(all) let name: String
+    }
+
+    access(all) resource RawTransformerEntity: TransformableEntity {
+        access(all) let transformRequirement: UInt64
+        access(all) let name: String
+
+        init() {
+            self.transformRequirement = 0
+            self.name = "Transformer Raw Form"
+        }
+    }
 
     /* 
     * Below this line are additional helper resources and structs.
