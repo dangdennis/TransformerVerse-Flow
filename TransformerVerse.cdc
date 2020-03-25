@@ -3,9 +3,10 @@
 // The TransformerVerse contract dictates the laws of operations for the Transformer and their fuel, Energon. 
 // As an Transformer continues to get traded among accounts, their powers and rankings will increase.
 access(all) contract TransformerVerse {
-    // Tradables is the base layer for any tradable resource
-    access(all) resource interface Tradables {
+    // Bot is the public layer for a Transformer resource
+    access(all) resource interface Bot {
         access(all) var timesTraded: UInt64
+        access(all) var name: String
     }
 
     access(all) let Decepticons: String
@@ -16,9 +17,13 @@ access(all) contract TransformerVerse {
     access(contract) let decepticonRankToTitle: {Int: String}
 
     // Declare the Transformer resource type
-    access(all) resource Transformer: Tradables {
+    access(all) resource Transformer: Bot {
         // The unique ID that differentiates each Transformer
         access(all) let id: UInt64
+        // Transformer name
+        access(all) var name: String
+        // isNamed is a flag to allow renaming a Transformer once
+        access(self) var isNamed: String
         // faction: Autobots vs Decepticons
         access(all) let faction: String
         // physicalPower dictates the physical combat ability of an Transformer
@@ -36,6 +41,8 @@ access(all) contract TransformerVerse {
         // timesTraded counts the number of times this resource has been 
         access(all) var timesTraded: UInt64
 
+
+
         init(id: UInt64, faction: String, growth: UInt64, transform: UInt64, physical: UInt64, energy: UInt64, speed: UInt64) {
             self.id = id
             self.faction = faction
@@ -46,6 +53,15 @@ access(all) contract TransformerVerse {
             self.speed = speed
             self.rank = 1
             self.timesTraded = 0
+            self.name = "Unnamed Transformer"
+        }
+
+        // a Transformer can only be named once
+        access(all) fun setName(name: String) {
+            if !self.isNamed {
+                self.name = name
+            }
+            self.isNamed = true
         }
 
         access(all) fun title(): String? {
