@@ -34,18 +34,20 @@ access(all) contract TransformerVerse {
         access(all) var speed: UInt64
         // growth dictates the ability for an Transformer to rank up and increase in combat and transform capabilities
         access(all) var growth: UInt64
-        // transform is the ability of an Transformer to assume the form of an entity
-        access(all) var transform: UInt64
+        // transformPower is the ability of an Transformer to assume the form of an entity
+        access(all) var transformPower: UInt64
         // rank is an Transformer's "level" or class tier. The higher the rank, the higher the Transformer's combat prowess. 
         access(all) var rank: Int
         // timesTraded counts the number of times this resource has been 
         access(all) var timesTraded: UInt64
+        // isTransformed dictates whether the Transformer is in a TransformedEntity state or in humanoid form
+        access(all) var isTransformed: Bool
 
         init(id: UInt64, faction: String, growth: UInt64, transform: UInt64, physical: UInt64, energy: UInt64, speed: UInt64) {
             self.id = id
             self.faction = faction
             self.growth = growth
-            self.transform = transform
+            self.transformPower = transform
             self.physicalPower = physical
             self.energyPower = energy
             self.speed = speed
@@ -53,9 +55,10 @@ access(all) contract TransformerVerse {
             self.timesTraded = 0
             self.name = "Unnamed Transformer"
             self.isNamed = false
+            self.isTransformed = false
         }
 
-        // a Transformer can only be named once
+        // a Transformer can be renamed once
         access(all) fun setName(name: String) {
             if !self.isNamed {
                 self.name = name
@@ -79,10 +82,15 @@ access(all) contract TransformerVerse {
                 self.rank = self.rank + 1
             }
             
-            self.transform = self.transform + self.growth
+            self.transformPower = self.transformPower + self.growth
             self.physicalPower = self.physicalPower + self.growth
             self.energyPower = self.energyPower + self.growth
             self.speed = self.speed + self.growth
+        }
+
+        // Transformers transform!
+        access(all) fun transform() {
+            self.isTransformed = !self.isTransformed
         }
     }
 
@@ -106,9 +114,9 @@ access(all) contract TransformerVerse {
         // withdraw removes an Transformer from the TransformerGarage 
         // and moves it to the calling context
         access(all) fun withdraw(withdrawID: UInt64): @Transformer {
-            // if the Transformer isn't found, the transaction panics and reverts
             let transformer <- self.ownedTransformers.remove(key: withdrawID) ?? panic("missing Transformer")
 
+            // TODO: rankUp should take into account how much Energon is spent for this withdrawal
             transformer.rankUp()
 
             return <-transformer
