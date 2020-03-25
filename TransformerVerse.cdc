@@ -23,7 +23,7 @@ access(all) contract TransformerVerse {
         // Transformer name
         access(all) var name: String
         // isNamed is a flag to allow renaming a Transformer once
-        access(self) var isNamed: String
+        access(self) var isNamed: Bool
         // faction: Autobots vs Decepticons
         access(all) let faction: String
         // physicalPower dictates the physical combat ability of an Transformer
@@ -41,8 +41,6 @@ access(all) contract TransformerVerse {
         // timesTraded counts the number of times this resource has been 
         access(all) var timesTraded: UInt64
 
-
-
         init(id: UInt64, faction: String, growth: UInt64, transform: UInt64, physical: UInt64, energy: UInt64, speed: UInt64) {
             self.id = id
             self.faction = faction
@@ -54,6 +52,7 @@ access(all) contract TransformerVerse {
             self.rank = 1
             self.timesTraded = 0
             self.name = "Unnamed Transformer"
+            self.isNamed = false
         }
 
         // a Transformer can only be named once
@@ -71,6 +70,20 @@ access(all) contract TransformerVerse {
                 return TransformerVerse.decepticonRankToTitle[self.rank]
             }
         }
+
+         // rankUp will level up the attributes of a Transformer
+        // a Transformer's growth rate determines the increase rate
+        access(all) fun rankUp() {
+            // a Transformer's max rank is tied to its growth value
+            if UInt64(self.rank) != self.growth {
+                self.rank = self.rank + 1
+            }
+            
+            self.transform = self.transform + self.growth
+            self.physicalPower = self.physicalPower + self.growth
+            self.energyPower = self.energyPower + self.growth
+            self.speed = self.speed + self.growth
+        }
     }
 
     // TransformerReceiver is the public interface for external actors to interact with the receiver's TransformerGarage
@@ -80,14 +93,12 @@ access(all) contract TransformerVerse {
         access(all) fun idExists(id: UInt64): Bool
     }
 
-    // The definition of the TransformerGarage resource that
-    // holds the Transformer that a user owns
+    // The definition of the TransformerGarage resource that holds the Transformer that a user owns
     access(all) resource TransformerGarage: TransformerReceiver {
-        // dictionary of Transformer conforming tokens
-        // Transformer is a resource type with an `UInt64` ID field
+        // ownedTransformers is the collection for the Transformer NFTs
         access(all) var ownedTransformers: @{UInt64: Transformer}
 
-        // Initialize the Transformer field to an empty TransformerGarage
+        // initialize the Transformer field to an empty TransformerGarage
         init () {
             self.ownedTransformers <- {}
         }
@@ -95,16 +106,18 @@ access(all) contract TransformerVerse {
         // withdraw removes an Transformer from the TransformerGarage 
         // and moves it to the calling context
         access(all) fun withdraw(withdrawID: UInt64): @Transformer {
-            // If the Transformer isn't found, the transaction panics and reverts
-            let token <- self.ownedTransformers.remove(key: withdrawID) ?? panic("missing Transformer")
+            // if the Transformer isn't found, the transaction panics and reverts
+            let transformer <- self.ownedTransformers.remove(key: withdrawID) ?? panic("missing Transformer")
 
-            return <-token
+            transformer.rankUp()
+
+            return <-transformer
         }
 
         // deposit takes a Transformer as an argument and 
         // adds it to the TransformerGarages dictionary
         access(all) fun deposit(token: @Transformer) {
-            // add the new token to the dictionary which removes the old one
+            // add the new bot to the garage which removes the old one
             let oldToken <- self.ownedTransformers[token.id] <- token
             destroy oldToken
         }
@@ -287,10 +300,10 @@ access(all) contract TransformerVerse {
 
     // RNG is necessary atm to act as a temporary form of random number generator
     access(all) struct RNG {
-        access(all) var diceOne: [Int; 100]
-        access(all) var diceTwo: [Int; 100]
-        access(all) var counterOne: Int
-        access(all) var counterTwo: Int
+        access(self) var diceOne: [Int; 100]
+        access(self) var diceTwo: [Int; 100]
+        access(self) var counterOne: Int
+        access(self) var counterTwo: Int
 
         init() {
             // My amazingly smart RNG machine
@@ -308,7 +321,7 @@ access(all) contract TransformerVerse {
         }
 
         // updateCounters manually "randomizes" the dice's index counters
-        access(all) fun updateCounters() {
+        access(self) fun updateCounters() {
             // If I was smart enough, I'd probably have a better solution given the current language constraints. Maybe try some bitwise operation.
             if self.counterOne == self.diceOne.length {
                 self.counterOne = 0
