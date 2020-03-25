@@ -95,6 +95,12 @@ access(all) contract TransformerVerse {
             self.speed = self.speed + self.growth
         }
 
+        // scan is the Transformer's ability to replicate the form of another non-Transformer entity
+        access(all) fun scan(entity: @TransformableEntity) {
+            let oldEntity <- self.scannedEntity <- entity
+            destroy oldEntity
+        }
+
         // Transformers transform!
         access(all) fun transform() {
             self.isTransformed = !self.isTransformed
