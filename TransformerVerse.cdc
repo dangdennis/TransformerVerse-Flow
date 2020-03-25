@@ -96,9 +96,13 @@ access(all) contract TransformerVerse {
         }
 
         // scan is the Transformer's ability to replicate the form of another non-Transformer entity
-        access(all) fun scan(entity: @TransformableEntity) {
+        access(all) fun scan(entity: @TransformableEntity): @TransformableEntity? {
+            if self.transformPower < entity.transformRequirement {
+                log("You are not powerful enough to assume this entity's form")
+                return <- entity
+            }
             let oldEntity <- self.scannedEntity <- entity
-            destroy oldEntity
+            return <- oldEntity
         }
 
         // Transformers transform!
